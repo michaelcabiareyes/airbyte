@@ -119,11 +119,13 @@ class GroupMembers(IncrementalOktaStream):
     cursor_field = "id"
     primary_key = "id"
     use_cache = True
+    reset_token = False
     min_id = "00u00000000000000000"
 
     def stream_slices(self, **kwargs):
         group_stream = Groups(authenticator=self.authenticator, url_base=self.url_base, start_date=self.start_date)
         for group in group_stream.read_records(sync_mode=SyncMode.full_refresh):
+            self.reset_token = True
             yield {"group_id": group["id"]}
 
     def path(self, stream_slice: Mapping[str, Any] = None, **kwargs) -> str:
@@ -136,8 +138,16 @@ class GroupMembers(IncrementalOktaStream):
         stream_slice: Mapping[str, any] = None,
         next_page_token: Mapping[str, Any] = None,
     ) -> MutableMapping[str, Any]:
-        params = super(IncrementalOktaStream, self).request_params(stream_state, stream_slice, next_page_token)
+        params = {"limit": self.page_size}
         latest_entry = stream_state.get(self.cursor_field) if stream_state else self.min_id
+
+        if next_page_token:
+            latest_entry = next_page_token.get("after")
+        
+        if self.reset_token:
+            latest_entry = self.min_id
+            self.reset_token = False
+            
         params["after"] = latest_entry
         return params
 
