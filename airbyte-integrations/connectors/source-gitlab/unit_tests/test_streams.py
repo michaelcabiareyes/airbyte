@@ -1,22 +1,26 @@
 #
-# Copyright (c) 2022 Airbyte, Inc., all rights reserved.
+# Copyright (c) 2023 Airbyte, Inc., all rights reserved.
 #
+
+import datetime
 
 import pytest
 from airbyte_cdk.sources.streams.http.auth import NoAuth
-from source_gitlab.streams import Commits, Jobs, MergeRequestCommits, MergeRequests, Pipelines, Projects, Releases, Tags
+from source_gitlab.streams import Branches, Commits, Jobs, MergeRequestCommits, MergeRequests, Pipelines, Projects, Releases, Tags
 
 auth_params = {"authenticator": NoAuth(), "api_url": "gitlab.com"}
 
 
+start_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=14)
 projects = Projects(project_ids=["p_1"], **auth_params)
-pipelines = Pipelines(parent_stream=projects, start_date="2021-01-01T00:00:00Z", **auth_params)
-merge_requests = MergeRequests(parent_stream=projects, start_date="2021-01-01T00:00:00Z", **auth_params)
+pipelines = Pipelines(parent_stream=projects, start_date=str(start_date), **auth_params)
+merge_requests = MergeRequests(parent_stream=projects, start_date=str(start_date), **auth_params)
 tags = Tags(parent_stream=projects, repository_part=True, **auth_params)
 releases = Releases(parent_stream=projects, **auth_params)
 jobs = Jobs(parent_stream=pipelines, **auth_params)
 merge_request_commits = MergeRequestCommits(parent_stream=merge_requests, **auth_params)
-commits = Commits(parent_stream=projects, repository_part=True, start_date="2021-01-01T00:00:00Z", **auth_params)
+branches = Branches(parent_stream=projects, **auth_params)
+commits = Commits(parent_stream=projects, repository_part=True, start_date=str(start_date), **auth_params)
 
 
 def test_should_retry(mocker, requests_mock):
@@ -40,14 +44,14 @@ test_cases = (
                 ]
             ),
         ),
-        [{"commit_id": "c_23", "id": "j_1", "pipeline_id": "p_17", "project_id": "p_1", "runner_id": None, "user_id": "u_1"}]
+        [{"commit": {"id": "c_23"}, "commit_id": "c_23", "id": "j_1", "pipeline": {"id": "p_17"}, "pipeline_id": "p_17", "project_id": "p_1", "runner": None, "runner_id": None, "user": {"id": "u_1"}, "user_id": "u_1"}]
     ),
     (
         tags,
         (
             ("/api/v4/projects/p_1/repository/tags", [{"commit": {"id": "c_1"}, "name": "t_1", "target": "ddc89"}],),
         ),
-        [{"commit_id": "c_1", "project_id": "p_1", "name": "t_1", "target": "ddc89"}]
+        [{"commit": {"id": "c_1"}, "commit_id": "c_1", "project_id": "p_1", "name": "t_1", "target": "ddc89"}]
     ),
     (
         releases,
@@ -64,7 +68,7 @@ test_cases = (
                 ],
             ),
         ),
-        [{"author_id": "666", "commit_id": "abcd689", "id": "r_1", "milestones": ["m1", "m2"], "project_id": "p_1"}]
+        [{"author": {"id": "666", "name": "John"}, "author_id": "666", "commit": {"id": "abcd689"}, "commit_id": "abcd689", "id": "r_1", "milestones": ["m1", "m2"], "project_id": "p_1"}]
     ),
     (
         merge_request_commits,
@@ -133,3 +137,11 @@ def test_transform(requests_mock, stream, response_mocks, expected_records):
 )
 def test_updated_state(stream, current_state, latest_record, new_state):
     assert stream.get_updated_state(current_state, latest_record) == new_state
+
+
+def test_blocked_branches(requests_mock):
+    requests_mock.get("/api/v4/projects/p_1/branches", status_code=404)
+    for stream_slice in branches.stream_slices(sync_mode="full_refresh"):
+        records = list(branches.read_records(sync_mode="full_refresh", stream_slice=stream_slice))
+    assert records == []
+    assert requests_mock.call_count == 1

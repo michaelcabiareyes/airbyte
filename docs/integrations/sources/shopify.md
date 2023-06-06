@@ -5,13 +5,18 @@ description: >-
 
 # Shopify
 
+
+:::note
+
+Our Shopify Source Connector does not support OAuth at this time due to limitations outside of our control. If OAuth for Shopify is critical to your business, [please reach out to us](mailto:product@airbyte.io) to discuss how we may be able to partner on this effort.
+
+:::
+
 ## Sync overview
 
 The Shopify source supports both Full Refresh and Incremental syncs. You can choose if this connector will copy only the new or updated data, or all rows in the tables and columns you set up for replication, every time a sync is run.
 
 This source can sync data for the [Shopify REST API](https://shopify.dev/api/admin-rest) and the [Shopify GraphQl API](https://shopify.dev/api/admin-graphql).
-
-This Source Connector is based on a [Airbyte CDK](https://docs.airbyte.io/connector-development/cdk-python).
 
 ## Troubleshooting
 
@@ -73,7 +78,7 @@ If child streams are synced alone from the parent stream - the full sync will ta
 
 ## Getting started
 
-This connector support both: `OAuth 2.0` and `API PASSWORD` (for private applications) athentication methods.
+This connector supports the `API PASSWORD` (for private applications) athentication methods.
 
 ### Connect using `API PASSWORD` option
 
@@ -82,14 +87,43 @@ This connector support both: `OAuth 2.0` and `API PASSWORD` (for private applica
 3. Create a private application.
 4. Select the resources you want to allow access to. Airbyte only needs read-level access.
    * Note: The UI will show all possible data sources and will show errors when syncing if it doesn't have permissions to access a resource.
-5. The password under the `Admin API` section is what you'll use as the `api_password` for the integration.
+5. The password under the `Admin API` section is what you'll use as the `API PASSWORD` for the integration.
 6. You're ready to set up Shopify in Airbyte!
 
-### Connect using `OAuth 2.0` option
-
-1. Select `OAuth 2.0` in `Shopify Authorization Method`
-2. Click on `authenticate`
-2. Proceed the authentication using your credentials for your Shopify account.
+### Scopes Required for Custom App
+Add the following scopes to your custom app to ensure Airbyte can sync all available data. To see a list of streams this source supports, see our full [Shopify documentation](https://docs.airbyte.com/integrations/sources/shopify/).
+* `read_analytics`
+* `read_assigned_fulfillment_orders`
+* `read_gdpr_data_request`
+* `read_locations`
+* `read_price_rules` 
+* `read_product_listings` 
+* `read_products` 
+* `read_reports` 
+* `read_resource_feedbacks` 
+* `read_script_tags` 
+* `read_shipping`
+* `read_locales`
+* `read_shopify_payments_accounts` 
+* `read_shopify_payments_bank_accounts` 
+* `read_shopify_payments_disputes`
+* `read_shopify_payments_payouts`
+* `read_content`
+* `read_themes`
+* `read_third_party_fulfillment_orders`
+* `read_translations`
+* `read_customers`
+* `read_discounts` 
+* `read_draft_orders` 
+* `read_fulfillments` 
+* `read_gift_cards`
+* `read_inventory`
+* `read_legal_policies` 
+* `read_marketing_events` 
+* `read_merchant_managed_fulfillment_orders` 
+* `read_online_store_pages`
+* `read_order_edits`
+* `read_orders`
 
 ### Output Streams Schemas
 
@@ -147,6 +181,10 @@ This is expected when the connector hits the 429 - Rate Limit Exceeded HTTP Erro
 
 | Version | Date       | Pull Request                                              | Subject                                                                                                   |
 |:--------|:-----------|:----------------------------------------------------------|:----------------------------------------------------------------------------------------------------------|
+| 0.3.4   | 2023-05-10 | [25961](https://github.com/airbytehq/airbyte/pull/25961)  | Added validation for `shop` in input configuration (accepts non-url-like inputs) |
+| 0.3.3   | 2023-04-12 | [25110](https://github.com/airbytehq/airbyte/pull/25110)  | Fix issue when `cursor_field` is `"None"`, added missing properties to stream schemas, fixed `access_scopes` validation error |
+| 0.3.2   | 2023-02-27 | [23473](https://github.com/airbytehq/airbyte/pull/23473)  | Fixed OOM / Memory leak issue for Airbyte Cloud                                                           |
+| 0.3.1   | 2023-01-16 | [21461](https://github.com/airbytehq/airbyte/pull/21461)  | Add `discount_applications` to `orders` stream                                                            |
 | 0.3.0   | 2022-11-16 | [19492](https://github.com/airbytehq/airbyte/pull/19492)  | Add support for graphql and add a graphql products stream                                                 |
 | 0.2.0   | 2022-10-21 | [18298](https://github.com/airbytehq/airbyte/pull/18298)  | Updated API version to the `2022-10`, make stream schemas backward cpmpatible                             |
 | 0.1.39  | 2022-10-13 | [17962](https://github.com/airbytehq/airbyte/pull/17962)  | Add metafield streams; support for nested list streams                                                    |
